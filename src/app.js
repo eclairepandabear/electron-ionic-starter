@@ -15,8 +15,18 @@
   const expressApp = express()
   const debug = require('debug')('express-test:server')
   const http = require('http')
+  const MongoClient = require('mongodb').MongoClient;
+
   const port = process.env.PORT || '3000'
-  let server
+  
+
+  let server;
+  let mainWindow;
+  let db;
+
+  MongoClient.connect('mongodb://localhost:27017', (err, client) => {
+    db = client.db('electron-test'); // database name
+  });
 
   function onListening () {
     let addr = server.address()
@@ -25,7 +35,7 @@
           : 'port ' + addr.port
     debug('Listening on ' + bind)
 
-    mainWindow.loadURL('http://127.0.0.1:3000')
+    mainWindow.loadURL('http://localhost:3000');
 
         // Use Electron Connect when developing for live reloading, and show the devtools
     if (process.env.NODE_ENV === 'development') {
@@ -34,15 +44,13 @@
     };
   }
 
-  let mainWindow = null
-
-  app.on('window-all-closed', function () {
+  app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
       app.quit()
     }
-  })
+  });
 
-  app.on('ready', function () {
+  app.on('ready', () => {
     mainWindow = new BrowserWindow({
       autoHideMenuBar: true,
       webPreferences: {
@@ -50,9 +58,9 @@
       },
       width: 1200,
       height: 900
-    })
+    });
 
-    expressApp.use(function(req, res, next) {
+    expressApp.use((req, res, next) => {
       res.header("Access-Control-Allow-Origin", "*");
       res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
       next();
@@ -65,15 +73,17 @@
     expressApp.use(bodyParser.urlencoded({ extended: false }))
     expressApp.use(cookieParser())
     expressApp.set('port', port)
-    expressApp.get('/', function (req, res) {
+    expressApp.get('/',(req, res) => {
       res.sendFile(path.join(path.join(__dirname, '/index.html')))
     })
+
+    // handle form request here
 
     server = http.createServer(expressApp)
     server.listen(port)
     server.on('listening', onListening)
 
-    mainWindow.on('closed', function () {
+    mainWindow.on('closed', () => {
       mainWindow = null
       server.close()
     })
